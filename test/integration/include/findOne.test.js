@@ -4,7 +4,6 @@ const chai = require('chai'),
   expect = chai.expect,
   Support = require('../support'),
   Sequelize = require('../../../index'),
-  Promise = Sequelize.Promise,
   DataTypes = require('../../../lib/data-types'),
   _ = require('lodash');
 
@@ -151,10 +150,10 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       return this.sequelize
         .sync({ force: true })
         .then(() => {
-          return Promise.join(
+          return Promise.all([
             A.create({}),
             B.create({})
-          );
+          ]);
         })
         .then(([a, b]) => {
           return a.addB(b, { through: { name: 'Foobar' } });
@@ -293,7 +292,7 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       G.belongsTo(H);
 
       return this.sequelize.sync({ force: true }).then(() => {
-        return Promise.join(
+        return Promise.all([
           A.create({}),
           (function(singles) {
             let promise = Promise.resolve(),
@@ -325,7 +324,7 @@ describe(Support.getTestDialectTeaser('Include'), () => {
 
             return promise;
           })([B, C, D, E, F, G, H])
-        ).then(([a, b]) => {
+        ]).then(([a, b]) => {
           return a.setB(b);
         }).then(() => {
           return A.findOne({

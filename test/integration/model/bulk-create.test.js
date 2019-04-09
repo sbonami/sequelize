@@ -3,7 +3,6 @@
 const chai = require('chai'),
   Sequelize = require('../../../index'),
   Op = Sequelize.Op,
-  Promise = Sequelize.Promise,
   expect = chai.expect,
   Support = require('../support'),
   DataTypes = require('../../../lib/data-types'),
@@ -315,7 +314,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
           const expectedValidationError = 'Validation len on code failed';
           const expectedNotNullError = 'notNull Violation: Task.name cannot be null';
 
-          expect(errors).to.be.instanceof(Promise.AggregateError);
+          expect(errors).to.be.instanceof(Sequelize.AggregateError);
           expect(errors.toString()).to.include(expectedValidationError)
             .and.to.include(expectedNotNullError);
           expect(errors).to.have.length(2);

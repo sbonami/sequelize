@@ -8,9 +8,6 @@ const Config = require('./config/config');
 const chai = require('chai');
 const expect = chai.expect;
 const AbstractQueryGenerator = require('../lib/dialects/abstract/query-generator');
-const sinon = require('sinon');
-
-sinon.usingPromise(require('bluebird'));
 
 chai.use(require('chai-spies'));
 chai.use(require('chai-datetime'));
@@ -24,11 +21,6 @@ process.on('uncaughtException', e => {
   console.error('An unhandled exception occurred:');
   throw e;
 });
-Sequelize.Promise.onPossiblyUnhandledRejection(e => {
-  console.error('An unhandled rejection occurred:');
-  throw e;
-});
-Sequelize.Promise.longStackTraces();
 
 const Support = {
   Sequelize,
@@ -51,34 +43,30 @@ const Support = {
     });
   },
 
-  prepareTransactionTest(sequelize, callback) {
+  async prepareTransactionTest(sequelize, callback) {
     const dialect = Support.getTestDialect();
 
     if (dialect === 'sqlite') {
       const p = path.join(__dirname, 'tmp', 'db.sqlite');
 
-      return new Sequelize.Promise(resolve => {
-        // We cannot promisify exists, since exists does not follow node callback convention - first argument is a boolean, not an error / null
-        if (fs.existsSync(p)) {
-          resolve(Sequelize.Promise.promisify(fs.unlink)(p));
-        } else {
-          resolve();
-        }
-      }).then(() => {
-        const options = Object.assign({}, sequelize.options, { storage: p }),
-          _sequelize = new Sequelize(sequelize.config.database, null, null, options);
+      if (fs.existsSync(p)) {
+        fs.unlinkSync(p);
+      }
+      const options = Object.assign({}, sequelize.options, { storage: p }),
+        _sequelize = new Sequelize(sequelize.config.database, null, null, options);
 
-        if (callback) {
-          _sequelize.sync({ force: true }).then(() => { callback(_sequelize); });
-        } else {
-          return _sequelize.sync({ force: true }).return(_sequelize);
-        }
-      });
+      if (callback) {
+        await _sequelize.sync({ force: true });
+        callback(_sequelize);
+      } else {
+        await _sequelize.sync({ force: true });
+        return _sequelize;
+      }
     }
     if (callback) {
       callback(sequelize);
     } else {
-      return Sequelize.Promise.resolve(sequelize);
+      return Promise.resolve(sequelize);
     }
   },
 
@@ -226,6 +214,10 @@ const Support = {
       url = `${config.dialect}://${credentials}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`;
     }
     return url;
+  },
+
+  delay(ms) {
+    return new Promise(res => setTimeout(res, ms));
   },
 
   expectsql(query, assertions) {

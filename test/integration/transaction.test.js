@@ -4,8 +4,6 @@ const chai = require('chai'),
   expect = chai.expect,
   Support = require('./support'),
   dialect = Support.getTestDialect(),
-  Sequelize = require('../../index'),
-  Promise = Sequelize.Promise,
   QueryTypes = require('../../lib/query-types'),
   Transaction = require('../../lib/transaction'),
   sinon = require('sinon'),
@@ -108,36 +106,32 @@ if (current.dialect.supports.transactions) {
 
       //Promise rejection test is specific to postgres
       if (dialect === 'postgres') {
-        it('do not rollback if already committed', function() {
+        it('do not rollback if already committed', async function() {
           const SumSumSum = this.sequelize.define('transaction', {
-              value: {
-                type: Support.Sequelize.DECIMAL(10, 3),
-                field: 'value'
-              }
-            }),
-            transTest = val => {
-              return this.sequelize.transaction({ isolationLevel: 'SERIALIZABLE' }, t => {
-                return SumSumSum.sum('value', { transaction: t }).then(() => {
-                  return SumSumSum.create({ value: -val }, { transaction: t });
-                });
-              });
-            };
-          // Attention: this test is a bit racy. If you find a nicer way to test this: go ahead
-          return SumSumSum.sync({ force: true }).then(() => {
-            return expect(Promise.join(transTest(80), transTest(80), transTest(80))).to.eventually.be.rejectedWith('could not serialize access due to read/write dependencies among transactions');
-          }).delay(100).then(() => {
-            if (this.sequelize.test.$runningQueries !== 0) {
-              return Promise.delay(200);
-            }
-            return void 0;
-          }).then(() => {
-            if (this.sequelize.test.$runningQueries !== 0) {
-              return Promise.delay(500);
+            value: {
+              type: Support.Sequelize.DECIMAL(10, 3),
+              field: 'value'
             }
           });
+          const transTest = val => {
+            return this.sequelize.transaction({ isolationLevel: 'SERIALIZABLE' }, t => {
+              return SumSumSum.sum('value', { transaction: t }).then(() => {
+                return SumSumSum.create({ value: -val }, { transaction: t });
+              });
+            });
+          };
+          // Attention: this test is a bit racy. If you find a nicer way to test this: go ahead
+          await SumSumSum.sync({ force: true });
+          await expect(Promise.all([transTest(80), transTest(80), transTest(80)])).to.eventually.be.rejectedWith('could not serialize access due to read/write dependencies among transactions');
+          await Support.delay(100);
+          if (this.sequelize.test.$runningQueries !== 0) {
+            await Support.delay(200);
+          }
+          if (this.sequelize.test.$runningQueries !== 0) {
+            await Support.delay(500);
+          }
         });
       }
-
     });
 
     it('does not allow queries after commit', function() {
@@ -147,7 +141,7 @@ if (current.dialect.supports.transactions) {
         }).then(() => {
           return this.sequelize.query('SELECT 1+1', { transaction: t, raw: true });
         });
-      }).throw(new Error('Expected error not thrown'))
+      }).then(() => { throw new Error('Expected error not thrown'); })
         .catch(err => {
           expect(err.message).to.match(/commit has been called on this transaction\([^)]+\), you can no longer use it\. \(The rejected query is attached as the 'sql' property of this error\)/);
           expect(err.sql).to.equal('SELECT 1+1');
@@ -158,15 +152,15 @@ if (current.dialect.supports.transactions) {
       return expect(
         this.sequelize.transaction().then(t => {
           return this.sequelize.query('SELECT 1+1', { transaction: t, raw: true }).then(() => {
-            return Promise.join(
+            return Promise.all([
               expect(t.commit()).to.eventually.be.fulfilled,
               this.sequelize.query('SELECT 1+1', { transaction: t, raw: true })
-                .throw(new Error('Expected error not thrown'))
+                .then(() => { throw new Error('Expected error not thrown'); })
                 .catch(err => {
                   expect(err.message).to.match(/commit has been called on this transaction\([^)]+\), you can no longer use it\. \(The rejected query is attached as the 'sql' property of this error\)/);
                   expect(err.sql).to.equal('SELECT 1+1');
                 })
-            );
+            ]);
           });
         })
       ).to.be.eventually.fulfilled;
@@ -186,7 +180,7 @@ if (current.dialect.supports.transactions) {
 
     it('should not rollback if connection was not acquired', function() {
       this.sinon.stub(this.sequelize.connectionManager, '_connect')
-        .returns(new Sequelize.Promise(() => {}));
+        .returns(new Promise(() => {}));
 
       const transaction = new Transaction(this.sequelize);
 
@@ -197,15 +191,15 @@ if (current.dialect.supports.transactions) {
     it('does not allow queries immediately after rollback call', function() {
       return expect(
         this.sequelize.transaction().then(t => {
-          return Promise.join(
+          return Promise.all([
             expect(t.rollback()).to.eventually.be.fulfilled,
             this.sequelize.query('SELECT 1+1', { transaction: t, raw: true })
-              .throw(new Error('Expected error not thrown'))
+              .then(() => { throw new Error('Expected error not thrown'); })
               .catch(err => {
                 expect(err.message).to.match(/rollback has been called on this transaction\([^)]+\), you can no longer use it\. \(The rejected query is attached as the 'sql' property of this error\)/);
                 expect(err.sql).to.equal('SELECT 1+1');
               })
-          );
+          ]);
         })
       ).to.eventually.be.fulfilled;
     });
@@ -444,7 +438,7 @@ if (current.dialect.supports.transactions) {
                 });
               });
             };
-            return Promise.join(newTransactionFunc(), newTransactionFunc()).then(() => {
+            return Promise.all([newTransactionFunc(), newTransactionFunc()]).then(() => {
               return User.findAll().then(users => {
                 expect(users.length).to.equal(2);
               });
@@ -460,14 +454,14 @@ if (current.dialect.supports.transactions) {
             const newTransactionFunc = function() {
               return sequelize.transaction({ type: Support.Sequelize.Transaction.TYPES.EXCLUSIVE, retry: { match: ['NO_MATCH'] } }).then(t => {
               // introduce delay to force the busy state race condition to fail
-                return Promise.delay(1000).then(() => {
+                return Support.delay(1000).then(() => {
                   return User.create({ id: null, username: `test ${t.id}` }, { transaction: t }).then(() => {
                     return t.commit();
                   });
                 });
               });
             };
-            return expect(Promise.join(newTransactionFunc(), newTransactionFunc())).to.be.rejectedWith('SQLITE_BUSY: database is locked');
+            return expect(Promise.all([newTransactionFunc(), newTransactionFunc()])).to.be.rejectedWith('SQLITE_BUSY: database is locked');
           });
         });
       });
@@ -498,7 +492,7 @@ if (current.dialect.supports.transactions) {
                 return this.sequelize.transaction({
                   isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
                 }).then(t2 => {
-                  return Promise.join(
+                  return Promise.all([
                     User.findOne({
                       where: {
                         username: 'jan'
@@ -518,11 +512,11 @@ if (current.dialect.supports.transactions) {
                       transaction: t1
                     }).then(() => {
                       t1Spy();
-                      return Promise.delay(2000).then(() => {
+                      return Support.delay(2000).then(() => {
                         return t1.commit();
                       });
                     })
-                  );
+                  ]);
                 });
               });
             });
@@ -581,12 +575,11 @@ if (current.dialect.supports.transactions) {
           Task.belongsToMany(User, { through: 'UserTasks' });
 
           return this.sequelize.sync({ force: true }).then(() => {
-            return Promise.join(
+            return Promise.all([
               User.create({ username: 'John' }),
-              Task.create({ title: 'Get rich', active: false }),
-              (john, task1) => {
-                return john.setTasks([task1]);
-              })
+              Task.create({ title: 'Get rich', active: false })
+            ])
+              .then(([john, task1]) => john.setTasks([task1]))
               .then(() => {
                 return this.sequelize.transaction(t1 => {
 
@@ -624,11 +617,12 @@ if (current.dialect.supports.transactions) {
             Task.belongsToMany(User, { through: 'UserTasks' });
 
             return this.sequelize.sync({ force: true }).then(() => {
-              return Promise.join(
+              return Promise.all([
                 User.create({ username: 'John' }),
                 Task.create({ title: 'Get rich', active: false }),
-                Task.create({ title: 'Die trying', active: false }),
-                (john, task1) => {
+                Task.create({ title: 'Die trying', active: false })
+              ])
+                .then(([john, task1]) => {
                   return john.setTasks([task1]);
                 })
                 .then(() => {
@@ -687,7 +681,7 @@ if (current.dialect.supports.transactions) {
                   transaction: t1
                 }).then(t1Jan => {
                   return this.sequelize.transaction().then(t2 => {
-                    return Promise.join(
+                    return Promise.all([
                       User.findOne({
                         where: {
                           username: 'jan'
@@ -703,13 +697,13 @@ if (current.dialect.supports.transactions) {
                       }, {
                         transaction: t1
                       }).then(() => {
-                        return Promise.delay(2000).then(() => {
+                        return Support.delay(2000).then(() => {
                           t1Spy();
                           expect(t1Spy).to.have.been.calledAfter(t2Spy);
                           return t1.commit();
                         });
                       })
-                    );
+                    ]);
                   });
                 });
               });
@@ -740,7 +734,7 @@ if (current.dialect.supports.transactions) {
                 return this.sequelize.transaction({
                   isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
                 }).then(t2 => {
-                  return Promise.join(
+                  return Promise.all([
                     User.findOne({
                       where: {
                         username: 'jan'
@@ -766,12 +760,12 @@ if (current.dialect.supports.transactions) {
                     }, {
                       transaction: t1
                     }).then(() => {
-                      return Promise.delay(2000).then(() => {
+                      return Support.delay(2000).then(() => {
                         t1Spy();
                         return t1.commit();
                       });
                     })
-                  );
+                  ]);
                 });
               });
             });

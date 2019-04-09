@@ -5,18 +5,13 @@ const chai = require('chai'),
   Support = require('../support'),
   current = Support.sequelize,
   sinon = require('sinon'),
-  DataTypes = require('../../../lib/data-types'),
-  Promise = require('bluebird').getNewLibraryCopy();
+  DataTypes = require('../../../lib/data-types');
 
 describe(Support.getTestDialectTeaser('Model'), () => {
   describe('findAndCountAll', () => {
     describe('should handle promise rejection', () => {
       before(function() {
         this.stub = sinon.stub();
-
-        Promise.onPossiblyUnhandledRejection(() => {
-          this.stub();
-        });
 
         this.User = current.define('User', {
           username: DataTypes.STRING,

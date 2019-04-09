@@ -1,7 +1,6 @@
 'use strict';
 
 const ResourceLock = require('../../../../lib/dialects/mssql/resource-lock'),
-  Promise = require('../../../../lib/promise'),
   assert = require('assert'),
   Support = require('../../support'),
   dialect = Support.getTestDialect();
@@ -18,24 +17,24 @@ if (dialect === 'mssql') {
       }
 
       return Promise.all([
-        Promise.using(lock.lock(), resource => {
+        lock.lock(resource => {
           validateResource(resource);
           assert.equal(last, 0);
           last = 1;
 
-          return Promise.delay(15);
+          return Support.delay(15);
         }),
-        Promise.using(lock.lock(), resource => {
+        lock.lock(resource => {
           validateResource(resource);
           assert.equal(last, 1);
           last = 2;
         }),
-        Promise.using(lock.lock(), resource => {
+        lock.lock(resource => {
           validateResource(resource);
           assert.equal(last, 2);
           last = 3;
 
-          return Promise.delay(5);
+          return Support.delay(5);
         })
       ]);
     });
@@ -49,12 +48,12 @@ if (dialect === 'mssql') {
       }
 
       return Promise.all([
-        Promise.using(lock.lock(), resource => {
+        lock.lock(resource => {
           validateResource(resource);
 
           throw new Error('unexpected error');
         }).catch(() => {}),
-        Promise.using(lock.lock(), validateResource)
+        lock.lock(validateResource)
       ]);
     });
 

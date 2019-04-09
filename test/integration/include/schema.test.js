@@ -6,7 +6,6 @@ const chai = require('chai'),
   expect = chai.expect,
   Support = require('../support'),
   DataTypes = require('../../../lib/data-types'),
-  Promise = Sequelize.Promise,
   dialect = Support.getTestDialect(),
   _ = require('lodash');
 
@@ -124,9 +123,9 @@ describe(Support.getTestDialectTeaser('Includes with schemas'), () => {
                   Rank.findAll(),
                   Tag.findAll()
                 ]);
-              }).then(([groups, companies, ranks, tags]) => {
-                return Promise.each([0, 1, 2, 3, 4], i => {
-                  return Promise.all([
+              }).then(async([groups, companies, ranks, tags]) => {
+                for (let i = 0;i<5;++i) {
+                  await Promise.all([
                     AccUser.create(),
                     Product.bulkCreate([
                       { title: 'Chair' },
@@ -146,14 +145,14 @@ describe(Support.getTestDialectTeaser('Includes with schemas'), () => {
                       groupMembers.push({ AccUserId: user.id, GroupId: groups[2].id, RankId: ranks[1].id });
                     }
 
-                    return Promise.join(
+                    return Promise.all([
                       GroupMember.bulkCreate(groupMembers),
                       user.setProducts([
                         products[i * 5 + 0],
                         products[i * 5 + 1],
                         products[i * 5 + 3]
                       ]),
-                      Promise.join(
+                      Promise.all([
                         products[i * 5 + 0].setTags([
                           tags[0],
                           tags[2]
@@ -168,14 +167,14 @@ describe(Support.getTestDialectTeaser('Includes with schemas'), () => {
                         products[i * 5 + 3].setTags([
                           tags[0]
                         ])
-                      ),
-                      Promise.join(
+                      ]),
+                      Promise.all([
                         products[i * 5 + 0].setCompany(companies[4]),
                         products[i * 5 + 1].setCompany(companies[3]),
                         products[i * 5 + 2].setCompany(companies[2]),
                         products[i * 5 + 3].setCompany(companies[1]),
                         products[i * 5 + 4].setCompany(companies[0])
-                      ),
+                      ]),
                       Price.bulkCreate([
                         { ProductId: products[i * 5 + 0].id, value: 5 },
                         { ProductId: products[i * 5 + 0].id, value: 10 },
@@ -186,9 +185,9 @@ describe(Support.getTestDialectTeaser('Includes with schemas'), () => {
                         { ProductId: products[i * 5 + 2].id, value: 20 },
                         { ProductId: products[i * 5 + 3].id, value: 20 }
                       ])
-                    );
+                    ]);
                   });
-                });
+                }
               });
             });
           });
@@ -265,9 +264,9 @@ describe(Support.getTestDialectTeaser('Includes with schemas'), () => {
               ]).then(() => {
                 return Tag.findAll();
               })
-            ]).then(([groups, ranks, tags]) => {
-              return Promise.each([0, 1, 2, 3, 4], i => {
-                return Promise.all([
+            ]).then(async([groups, ranks, tags]) => {
+              for (let i = 0;i<5;++i) {
+                await Promise.all([
                   AccUser.create(),
                   Product.bulkCreate([
                     { title: 'Chair' },
@@ -303,7 +302,7 @@ describe(Support.getTestDialectTeaser('Includes with schemas'), () => {
                     ])
                   ]);
                 });
-              });
+              }
             }).then(() => {
               return AccUser.findAll({
                 include: [
@@ -380,19 +379,17 @@ describe(Support.getTestDialectTeaser('Includes with schemas'), () => {
       return this.sequelize.sync().then(() => {
         return A.bulkCreate([
           {}, {}, {}, {}, {}, {}, {}, {}
-        ]).then(() => {
+        ]).then(async() => {
           let previousInstance;
-          return Promise.each(singles, model => {
-            return model.create({}).then(instance => {
-              if (previousInstance) {
-                return previousInstance[`set${_.upperFirst(model.name)}`](instance).then(() => {
-                  previousInstance = instance;
-                });
-              }
-              previousInstance = b = instance;
-              return void 0;
-            });
-          });
+          for (const model of singles) {
+            const instance = await model.create({});
+            if (previousInstance) {
+              return previousInstance[`set${_.upperFirst(model.name)}`](instance).then(() => {
+                previousInstance = instance;
+              });
+            }
+            previousInstance = b = instance;
+          }
         }).then(() => {
           return A.findAll();
         }).then(as => {
@@ -1060,23 +1057,23 @@ describe(Support.getTestDialectTeaser('Includes with schemas'), () => {
       User.belongsTo(Group);
 
       return this.sequelize.sync({ force: true }).then(() => {
-        return Promise.props({
-          groups: Group.bulkCreate([
+        return Promise.all([
+          Group.bulkCreate([
             { name: 'A' },
             { name: 'B' }
           ]).then(() => {
             return Group.findAll();
           }),
-          users: User.bulkCreate([{}, {}, {}, {}]).then(() => {
+          User.bulkCreate([{}, {}, {}, {}]).then(() => {
             return User.findAll();
           })
-        }).then(results => {
-          return Promise.join(
-            results.users[1].setGroup(results.groups[0]),
-            results.users[2].setGroup(results.groups[0]),
-            results.users[3].setGroup(results.groups[1]),
-            results.users[0].setGroup(results.groups[0])
-          );
+        ]).then(([groups, users]) => {
+          return Promise.all([
+            users[1].setGroup(groups[0]),
+            users[2].setGroup(groups[0]),
+            users[3].setGroup(groups[1]),
+            users[0].setGroup(groups[0])
+          ]);
         }).then(() => {
           return User.findAll({
             include: [

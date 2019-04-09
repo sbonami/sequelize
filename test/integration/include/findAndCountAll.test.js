@@ -5,8 +5,7 @@ const chai = require('chai'),
   sinon = require('sinon'),
   Support = require('../support'),
   Op = Support.Sequelize.Op,
-  DataTypes = require('../../../lib/data-types'),
-  Promise = require('bluebird');
+  DataTypes = require('../../../lib/data-types');
 
 describe(Support.getTestDialectTeaser('Include'), () => {
   before(function() {
@@ -32,7 +31,7 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       // Sync them
       return this.sequelize.sync({ force: true }).then(() => {
         // Create an enviroment
-        return Promise.join(
+        return Promise.all([
           Project.bulkCreate([
             { id: 1, name: 'No tasks' },
             { id: 2, name: 'No tasks no employees' },
@@ -53,7 +52,7 @@ describe(Support.getTestDialectTeaser('Include'), () => {
             { name: 'Jane John Doe', fk: 5 },
             { name: 'John Jane Doe', fk: 6 }
           ])
-        ).then(() =>{
+        ]).then(() =>{
           //Find all projects with tasks and employees
           const availableProjects = 3;
           const limit = 2;
@@ -100,7 +99,7 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       return this.sequelize.sync({ force: true }).then(() => {
         // Create an enviroment
 
-        return Promise.join(
+        return Promise.all([
           User.bulkCreate([
             { name: 'Youtube' },
             { name: 'Facebook' },
@@ -148,7 +147,7 @@ describe(Support.getTestDialectTeaser('Include'), () => {
           C.bulkCreate([
             { name: 'because we only want A' }
           ])
-        ).then(() => {
+        ]).then(() => {
           // Delete some of conns to prove the concept
           return SomeConnection.destroy({ where: {
             m: 'A',
@@ -225,19 +224,18 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       }).then(() => {
         // Make four instances of Bar, related to the last four instances of Foo
         return Bar.bulkCreate([{ 'FooId': 2 }, { 'FooId': 3 }, { 'FooId': 4 }, { 'FooId': 5 }]);
-      }).then(() => {
+      }).then(async() => {
         // Query for the first two instances of Foo which have related Bars
-        return Foo.findAndCountAll({
+        const res = await Foo.findAndCountAll({
           include: [{ model: Bar, required: true }],
           limit: 2
-        }).tap(() => {
-          return Foo.findAll({
-            include: [{ model: Bar, required: true }],
-            limit: 2
-          }).then(items => {
-            expect(items.length).to.equal(2);
-          });
         });
+        const items = await Foo.findAll({
+          include: [{ model: Bar, required: true }],
+          limit: 2
+        });
+        expect(items.length).to.equal(2);
+        return res;
       }).then(result => {
         expect(result.count).to.equal(4);
 

@@ -36,9 +36,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
     it('can detect complexe objects', () => {
       const Where = function() { this.secretValue = '1'; };
 
-      expect(() => {
-        User.destroy({ where: new Where() });
-      }).to.throw();
+      expect(User.destroy({ where: new Where() })).to.eventually.be.rejected;
 
     });
   });

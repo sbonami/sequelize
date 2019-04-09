@@ -5,6 +5,10 @@ export class BaseError extends Error {
   public name: string;
 }
 
+export class AggregateError extends Error {
+  public readonly errors: Error[];
+}
+
 /**
  * Scope Error. Thrown when the sequelize cannot query the specified scope.
  */

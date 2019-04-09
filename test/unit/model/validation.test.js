@@ -4,7 +4,6 @@ const chai = require('chai'),
   sinon = require('sinon'),
   expect = chai.expect,
   Sequelize = require('../../../index'),
-  Promise = Sequelize.Promise,
   Op = Sequelize.Op,
   Support = require('../support'),
   current = Support.sequelize,
@@ -273,7 +272,7 @@ describe(Support.getTestDialectTeaser('InstanceValidator'), () => {
     });
 
     before(function() {
-      this.stub = sinon.stub(current, 'query').callsFake(() => new Promise.resolve([User.build({}), 1]));
+      this.stub = sinon.stub(current, 'query').callsFake(() => Promise.resolve([User.build({}), 1]));
     });
 
     after(function() {
@@ -309,7 +308,7 @@ describe(Support.getTestDialectTeaser('InstanceValidator'), () => {
         });
 
         it('should allow decimal as scientific notation', () => {
-          return Promise.join(
+          return Promise.all([
             expect(User.create({
               number: '2321312301230128391820e219'
             })).not.to.be.rejected,
@@ -319,7 +318,7 @@ describe(Support.getTestDialectTeaser('InstanceValidator'), () => {
             expect(User.create({
               number: '2321312301230128391820f219'
             })).to.be.rejected
-          );
+          ]);
         });
 
         it('should allow string as a number', () => {

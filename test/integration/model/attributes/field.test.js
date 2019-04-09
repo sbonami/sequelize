@@ -3,7 +3,6 @@
 const chai = require('chai'),
   sinon = require('sinon'),
   Sequelize = require('../../../../index'),
-  Promise = Sequelize.Promise,
   expect = chai.expect,
   Support = require('../../support'),
   DataTypes = require('../../../../lib/data-types'),
@@ -542,14 +541,14 @@ describe(Support.getTestDialectTeaser('Model'), () => {
 
       it('should work with a belongsTo association getter', function() {
         const userId = Math.floor(Math.random() * 100000);
-        return Promise.join(
+        return Promise.all([
           this.User.create({
             id: userId
           }),
           this.Task.create({
             user_id: userId
           })
-        ).then(([user, task]) => {
+        ]).then(([user, task]) => {
           return Promise.all([user, task.getUser()]);
         }).then(([userA, userB]) => {
           expect(userA.get('id')).to.equal(userB.get('id'));

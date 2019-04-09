@@ -2,7 +2,6 @@
 
 const chai = require('chai'),
   Sequelize = require('../../index'),
-  Promise = Sequelize.Promise,
   expect = chai.expect,
   Support = require('./support'),
   DataTypes = require('../../lib/data-types'),
@@ -114,10 +113,10 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       };
 
       return this.sequelize.sync({ force: true }).then(() => {
-        return Promise.join(
+        return Promise.all([
           Person.create(),
           Company.create()
-        ).then(([person, company]) => {
+        ]).then(([person, company]) => {
           return person.setEmployer(company);
         });
       }).then(() => {
@@ -160,14 +159,14 @@ describe(Support.getTestDialectTeaser('Include'), () => {
 
       return this.sequelize.sync({ force: true }).then(() => {
         return User.create().then(user => {
-          return Promise.join(
+          return Promise.all([
             user.createTask({
               title: 'trivial'
             }),
             user.createTask({
               title: 'pursuit'
             })
-          );
+          ]);
         }).then(() => {
           return User.findOne({
             include: [
@@ -203,7 +202,7 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       });
     });
 
-    it('should support a simple nested belongsTo -> belongsTo include', function() {
+    it('should support a simple nested belongsTo -> belongsTo include', async function() {
       const Task = this.sequelize.define('Task', {}),
         User = this.sequelize.define('User', {}),
         Group = this.sequelize.define('Group', {});
@@ -211,32 +210,28 @@ describe(Support.getTestDialectTeaser('Include'), () => {
       Task.belongsTo(User);
       User.belongsTo(Group);
 
-      return this.sequelize.sync({ force: true }).then(() => {
-        return Promise.props({
-          task: Task.create(),
-          user: User.create(),
-          group: Group.create()
-        }).then(props => {
-          return Promise.join(
-            props.task.setUser(props.user),
-            props.user.setGroup(props.group)
-          ).return(props);
-        }).then(props => {
-          return Task.findOne({
-            where: {
-              id: props.task.id
-            },
-            include: [
-              { model: User, include: [
-                { model: Group }
-              ] }
-            ]
-          }).then(task => {
-            expect(task.User).to.be.ok;
-            expect(task.User.Group).to.be.ok;
-          });
-        });
+      await this.sequelize.sync({ force: true });
+      const [task, user, group] = await Promise.all([
+        Task.create(),
+        User.create(),
+        Group.create()
+      ]);
+      await Promise.all([
+        task.setUser(user),
+        user.setGroup(group)
+      ]);
+      const task2 = await Task.findOne({
+        where: {
+          id: task.id
+        },
+        include: [
+          { model: User, include: [
+            { model: Group }
+          ] }
+        ]
       });
+      expect(task2.User).to.be.ok;
+      expect(task2.User.Group).to.be.ok;
     });
 
     it('should support a simple sibling set of belongsTo include', function() {

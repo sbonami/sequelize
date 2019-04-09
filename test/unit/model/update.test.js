@@ -47,9 +47,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
     it('can detect complexe objects', function() {
       const Where = function() { this.secretValue = '1'; };
 
-      expect(() => {
-        this.User.update(this.updates, { where: new Where() });
-      }).to.throw();
+      expect(this.User.update(this.updates, { where: new Where() })).to.eventually.be.rejected;
     });
   });
 });

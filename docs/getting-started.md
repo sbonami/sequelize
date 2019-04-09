@@ -222,5 +222,3 @@ Sequelize has a lot of options for querying. You will learn more about those in 
 ## Promises and async/await
 
 As shown above by the extensive usage of `.then` calls, Sequelize uses Promises extensively. This means that, if your Node version supports it, you can use ES2017 `async/await` syntax for all asynchronous calls made with Sequelize.
-
-Also, all Sequelize promises are in fact [Bluebird](http://bluebirdjs.com) promises, so you have the rich Bluebird API to use as well (for example, using `finally`, `tap`, `tapCatch`, `map`, `mapSeries`, etc). You can access the Bluebird constructor used internally by Sequelize with `Sequelize.Promise`, if you want to set any Bluebird specific options.

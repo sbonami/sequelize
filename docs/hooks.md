@@ -74,7 +74,7 @@ User.addHook('beforeValidate', (user, options) => {
 });
 
 User.addHook('afterValidate', 'someCustomName', (user, options) => {
-  return Promise.reject(new Error("I'm afraid I can't let you do that!"));
+  throw new Error("I'm afraid I can't let you do that!");
 });
 
 // Method 3 via the direct method

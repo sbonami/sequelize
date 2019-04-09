@@ -5,7 +5,6 @@ const chai = require('chai'),
   expect = chai.expect,
   Support = require('../../support'),
   Sequelize = Support.Sequelize,
-  Promise = Sequelize.Promise,
   DataTypes = require('../../../../lib/data-types'),
   current = Support.sequelize,
   _ = require('lodash');
@@ -51,22 +50,22 @@ if (current.dialect.supports['UNION ALL']) {
           this.User.Tasks = this.User.hasMany(this.Task);
 
           return this.sequelize.sync({ force: true }).then(() => {
-            return Promise.join(
+            return Promise.all([
               this.User.bulkCreate([{ age: -5 }, { age: 45 }, { age: 7 }, { age: -9 }, { age: 8 }, { age: 15 }, { age: -9 }]),
               this.Project.bulkCreate([{}, {}]),
               this.Task.bulkCreate([{}, {}])
-            );
+            ]);
           })
             .then(() => Promise.all([this.User.findAll(), this.Project.findAll(), this.Task.findAll()]))
             .then(([users, projects, tasks]) => {
               this.projects = projects;
-              return Promise.join(
+              return Promise.all([
                 projects[0].setMembers(users.slice(0, 4)),
                 projects[1].setMembers(users.slice(2)),
                 projects[0].setParanoidMembers(users.slice(0, 4)),
                 projects[1].setParanoidMembers(users.slice(2)),
                 users[2].setTasks(tasks)
-              );
+              ]);
             });
         });
 
@@ -182,10 +181,10 @@ if (current.dialect.supports['UNION ALL']) {
               expect(users).to.have.length(5);
               expect(users.map(u => u.get('id'))).to.deep.equal([1, 3, 5, 7, 4]);
 
-              return Sequelize.Promise.join(
+              return Promise.all([
                 this.projects[0].setParanoidMembers(users.slice(0, 2)),
                 this.projects[1].setParanoidMembers(users.slice(4))
-              );
+              ]);
             }).then(() => {
               return this.User.findAll({
                 attributes: ['id'],
@@ -218,19 +217,19 @@ if (current.dialect.supports['UNION ALL']) {
             this.User.Tasks = this.User.hasMany(this.Task);
 
             return this.sequelize.sync({ force: true }).then(() => {
-              return Promise.join(
+              return Promise.all([
                 this.User.bulkCreate([{}, {}, {}]),
                 this.Task.bulkCreate([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, { id: 6 }])
-              );
+              ]);
             })
               .then(() => Promise.all([this.User.findAll(), this.Task.findAll()]))
               .then(([users, tasks]) => {
                 this.users = users;
-                return Promise.join(
+                return Promise.all([
                   users[0].setTasks(tasks[0]),
                   users[1].setTasks(tasks.slice(1, 4)),
                   users[2].setTasks(tasks.slice(4))
-                );
+                ]);
               });
           });
 

@@ -47,8 +47,8 @@ describe(Support.getTestDialectTeaser('DataTypes'), () => {
         dateField: moment('2011 10 31', 'YYYY MM DD')
       });
     }).then(() => {
-      return User.findAll().get(0);
-    }).then(user => {
+      return User.findAll();
+    }).then(([user]) => {
       expect(parse).to.have.been.called;
       expect(stringify).to.have.been.called;
 
@@ -87,7 +87,7 @@ describe(Support.getTestDialectTeaser('DataTypes'), () => {
         field: value
       });
     }).then(() => {
-      return User.findAll().get(0);
+      return User.findAll();
     }).then(() => {
       expect(parse).to.have.been.called;
       if (options && options.useBindParam) {
@@ -385,7 +385,7 @@ describe(Support.getTestDialectTeaser('DataTypes'), () => {
         return;
       }
 
-      return new Sequelize.Promise((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         if (/^postgres/.test(dialect)) {
           current.query('SELECT PostGIS_Lib_Version();')
             .then(result => {

@@ -7,7 +7,6 @@ const chai = require('chai'),
   Sequelize = require('../../../index'),
   moment = require('moment'),
   sinon = require('sinon'),
-  Promise = Sequelize.Promise,
   Op = Sequelize.Op,
   current = Support.sequelize,
   _ = require('lodash'),
@@ -44,11 +43,12 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
         }, {
           include: [Task]
         });
-      }).then(user => {
-        return Promise.join(
+      }).then(async user => {
+        await Promise.all([
           user.get('Tasks')[0].createSubtask({ title: 'Make a startup', active: false }),
           user.get('Tasks')[0].createSubtask({ title: 'Engage rock stars', active: true })
-        ).return(user);
+        ]);
+        return user;
       }).then(user => {
         return expect(user.countTasks({
           attributes: [Task.primaryKeyField, 'title'],
@@ -75,7 +75,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
           User.Tasks = User.hasMany(Task, { as: 'tasks' });
 
           return this.sequelize.sync({ force: true }).then(() => {
-            return Promise.join(
+            return Promise.all([
               User.create({
                 id: 1,
                 tasks: [
@@ -97,7 +97,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
               User.create({
                 id: 3
               })
-            );
+            ]);
           }).then(users => {
             return User.Tasks.get(users).then(result => {
               expect(result[users[0].id].length).to.equal(3);
@@ -116,7 +116,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
           User.Tasks = User.hasMany(Task, { as: 'tasks' });
 
           return this.sequelize.sync({ force: true }).then(() => {
-            return Promise.join(
+            return Promise.all([
               User.create({
                 tasks: [
                   { title: 'b' },
@@ -136,7 +136,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
               }, {
                 include: [User.Tasks]
               })
-            );
+            ]);
           }).then(users => {
             return User.Tasks.get(users, {
               limit: 2,
@@ -168,7 +168,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
           Task.SubTasks = Task.hasMany(SubTask, { as: 'subtasks' });
 
           return this.sequelize.sync({ force: true }).then(() => {
-            return Promise.join(
+            return Promise.all([
               User.create({
                 id: 1,
                 tasks: [
@@ -210,7 +210,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
               }, {
                 include: [{ association: User.Tasks, include: [Task.SubTasks] }]
               })
-            );
+            ]);
           }).then(() => {
             return User.findAll({
               include: [{
@@ -275,7 +275,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
           Task.Category = Task.belongsTo(Category, { as: 'category', foreignKey: 'categoryId' });
 
           return this.sequelize.sync({ force: true }).then(() => {
-            return Promise.join(
+            return Promise.all([
               User.create({
                 tasks: [
                   { title: 'b', category: {} },
@@ -295,7 +295,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
               }, {
                 include: [{ association: User.Tasks, include: [Task.Category] }]
               })
-            );
+            ]);
           }).then(users => {
             return User.Tasks.get(users, {
               limit: 2,
@@ -340,7 +340,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
           }).then(() => {
             return SubTask.sync({ force: true });
           }).then(() => {
-            return Promise.join(
+            return Promise.all([
               User.create({
                 id: 1,
                 tasks: [
@@ -382,7 +382,7 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
               }, {
                 include: [{ association: User.Tasks, include: [Task.SubTasks] }]
               })
-            );
+            ]);
           }).then(() => {
             return User.findAll({
               include: [{
@@ -942,8 +942,9 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
 
         return this.sequelize.sync({ force: true }).then(() => {
           return Article.create({ title: 'foo' });
-        }).then(article => {
-          return article.createLabel({ text: 'bar' }).return(article);
+        }).then(async article => {
+          await article.createLabel({ text: 'bar' });
+          return article;
         }).then(article => {
           return Label.findAll({ where: { ArticleId: article.id } });
         }).then(labels => {
@@ -1022,12 +1023,13 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
 
         return this.sequelize.sync({ force: true }).then(() => {
           return Article.create();
-        }).then(article => {
-          return article.createLabel({
+        }).then(async article => {
+          await article.createLabel({
             text: 'yolo'
           }, {
             fields: ['text']
-          }).return(article);
+          });
+          return article;
         }).then(article => {
           return article.getLabels();
         }).then(labels => {
@@ -1264,8 +1266,9 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
               User.create({ username: 'foo' }),
               Task.create({ title: 'task' })
             ]);
-          }).then(([user, task]) => {
-            return user.setTasks([task]).return(user);
+          }).then(async([user, task]) => {
+            await user.setTasks([task]);
+            return user;
           }).then(user => {
             // Changing the id of a DAO requires a little dance since
             // the `UPDATE` query generated by `save()` uses `id` in the
@@ -1300,7 +1303,8 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
             ctx.task = task;
             return user.setTasks([task]);
           }).then(() => {
-            return ctx.user.destroy().catch(Sequelize.ForeignKeyConstraintError, () => {
+            return ctx.user.destroy().catch(err => {
+              expect(err).to.be.an.instanceof(Sequelize.ForeignKeyConstraintError);
               // Should fail due to FK violation
               return Task.findAll();
             });
@@ -1320,8 +1324,9 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
               User.create({ username: 'foo' }),
               Task.create({ title: 'task' })
             ]);
-          }).then(([user, task]) => {
-            return user.setTasks([task]).return(user);
+          }).then(async([user, task]) => {
+            await user.setTasks([task]);
+            return user;
           }).then(user => {
             // Changing the id of a DAO requires a little dance since
             // the `UPDATE` query generated by `save()` uses `id` in the
@@ -1329,8 +1334,9 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
 
             const tableName = user.sequelize.getQueryInterface().QueryGenerator.addSchema(user.constructor);
             return user.sequelize.getQueryInterface().update(user, tableName, { id: 999 }, { id: user.id })
-              .catch(Sequelize.ForeignKeyConstraintError, () => {
-              // Should fail due to FK violation
+              .catch(err => {
+                expect(err).to.be.an.instanceof(Sequelize.ForeignKeyConstraintError);
+                // Should fail due to FK violation
                 return Task.findAll();
               });
           }).then(tasks => {
@@ -1362,21 +1368,20 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
       expect(Account.rawAttributes.UserId.field).to.equal('UserId');
     });
 
-    it('can specify data type for auto-generated relational keys', function() {
+    it('can specify data type for auto-generated relational keys', async function() {
       const User = this.sequelize.define('UserXYZ', { username: DataTypes.STRING }),
         dataTypes = [Sequelize.INTEGER, Sequelize.BIGINT, Sequelize.STRING],
         Tasks = {};
 
-      return Promise.each(dataTypes, dataType => {
+      for (const dataType of dataTypes) {
         const tableName = `TaskXYZ_${dataType.key}`;
         Tasks[dataType] = this.sequelize.define(tableName, { title: DataTypes.STRING });
 
         User.hasMany(Tasks[dataType], { foreignKey: 'userId', keyType: dataType, constraints: false });
 
-        return Tasks[dataType].sync({ force: true }).then(() => {
-          expect(Tasks[dataType].rawAttributes.userId.type).to.be.an.instanceof(dataType);
-        });
-      });
+        await Tasks[dataType].sync({ force: true });
+        expect(Tasks[dataType].rawAttributes.userId.type).to.be.an.instanceof(dataType);
+      }
     });
 
     it('infers the keyType if none provided', function() {
@@ -1718,9 +1723,9 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
 
     it('should load with an alias', function() {
       return this.sequelize.sync({ force: true }).then(() => {
-        return Promise.join(
+        return Promise.all([
           this.Individual.create({ name: 'Foo Bar' }),
-          this.Hat.create({ name: 'Baz' }));
+          this.Hat.create({ name: 'Baz' })]);
       }).then(([individual, hat]) => {
         return individual.addPersonwearinghat(hat);
       }).then(() => {
@@ -1737,9 +1742,9 @@ describe(Support.getTestDialectTeaser('HasMany'), () => {
 
     it('should load all', function() {
       return this.sequelize.sync({ force: true }).then(() => {
-        return Promise.join(
+        return Promise.all([
           this.Individual.create({ name: 'Foo Bar' }),
-          this.Hat.create({ name: 'Baz' }));
+          this.Hat.create({ name: 'Baz' })]);
       }).then(([individual, hat]) => {
         return individual.addPersonwearinghat(hat);
       }).then(() => {

@@ -4,7 +4,6 @@ const chai = require('chai');
 const expect = chai.expect;
 const sinon = require('sinon');
 const Support = require('./support');
-const Sequelize = Support.Sequelize;
 const dialect = Support.getTestDialect();
 const current = Support.sequelize;
 
@@ -47,7 +46,7 @@ describe('Transaction', () => {
     };
     return current.transaction(() => {
       expect(this.stub.args.map(arg => arg[0])).to.deep.equal(expectations[dialect] || expectations.all);
-      return Sequelize.Promise.resolve();
+      return Promise.resolve();
     });
   });
 });

@@ -22,7 +22,6 @@ import {
 } from './model';
 import { ModelManager } from './model-manager';
 import * as Op from './operators';
-import { Promise } from './promise';
 import { QueryInterface, QueryOptions, QueryOptionsWithModel, QueryOptionsWithType } from './query-interface';
 import QueryTypes = require('./query-types');
 import { Transaction, TransactionOptions } from './transaction';
@@ -670,15 +669,6 @@ export class Sequelize extends Hooks {
   public static afterSync(fn: (options: SyncOptions) => HookReturn): void;
 
   /**
-   * Use CLS with Sequelize.
-   * CLS namespace provided is stored as `Sequelize._cls`
-   * and bluebird Promise is patched to use the namespace, using `cls-bluebird` module.
-   *
-   * @param namespace
-   */
-  public static useCLS(namespace: object): typeof Sequelize;
-
-  /**
    * A reference to Sequelize constructor from sequelize. Useful for accessing DataTypes, Errors etc.
    */
   public Sequelize: typeof Sequelize;
@@ -1237,18 +1227,6 @@ export class Sequelize extends Hooks {
    *   console.error(err);
    * });
    * ```
-   *
-   * If you have [CLS](https://github.com/othiym23/node-continuation-local-storage) enabled, the transaction
-   * will automatically be passed to any query that runs witin the callback. To enable CLS, add it do your
-   * project, create a namespace and set it on the sequelize constructor:
-   *
-   * ```js
-   * const cls = require('continuation-local-storage'),
-   *   ns = cls.createNamespace('....');
-   * const Sequelize = require('sequelize');
-   * Sequelize.cls = ns;
-   * ```
-   * Note, that CLS is enabled for all sequelize instances, and all instances will share the same namespace
    *
    * @param options Transaction Options
    * @param autoCallback Callback for the transaction

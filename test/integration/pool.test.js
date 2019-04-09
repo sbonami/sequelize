@@ -188,7 +188,7 @@ describe(Support.getTestDialectTeaser('Pooling'), () => {
         })
         .then(() => {
           // Get next available connection
-          return Sequelize.Promise.delay(9).then(() => cm.getConnection());
+          return Support.delay(9).then(() => cm.getConnection());
         })
         .then(connection => {
           assertSameConnection(connection, conn);
@@ -225,7 +225,7 @@ describe(Support.getTestDialectTeaser('Pooling'), () => {
         })
         .then(() => {
           // Get next available connection
-          return Sequelize.Promise.delay(110).then(() => cm.getConnection());
+          return Support.delay(110).then(() => cm.getConnection());
         })
         .then(connection => {
           assertNewConnection(connection, conn);
@@ -247,7 +247,7 @@ describe(Support.getTestDialectTeaser('Pooling'), () => {
       });
 
       this.sinon.stub(this.testInstance.connectionManager, '_connect')
-        .returns(new Sequelize.Promise(() => {}));
+        .returns(new Promise(() => {}));
 
       return expect(this.testInstance.authenticate())
         .to.eventually.be.rejectedWith(Sequelize.ConnectionAcquireTimeoutError);
@@ -264,7 +264,7 @@ describe(Support.getTestDialectTeaser('Pooling'), () => {
       });
 
       this.sinon.stub(this.testInstance.connectionManager, '_connect')
-        .returns(new Sequelize.Promise(() => {}));
+        .returns(new Promise(() => {}));
 
       return expect(this.testInstance.transaction(() => {
         return this.testInstance.transaction(() => {});

@@ -3,8 +3,6 @@
 const chai = require('chai'),
   expect = chai.expect,
   Support = require('../support'),
-  Sequelize = require('../../../index'),
-  Promise = Sequelize.Promise,
   DataTypes = require('../../../lib/data-types'),
   sinon = require('sinon'),
   dialect = Support.getTestDialect();
@@ -716,7 +714,7 @@ describe(Support.getTestDialectTeaser('Hooks'), () => {
                 return Promise.resolve();
               });
 
-              return Sequelize.Promise.all([
+              return Promise.all([
                 this.Projects.create({ title: 'New Project' }),
                 this.MiniTasks.create({ mini_title: 'New MiniTask' })
               ]).then(([project, minitask]) => {
@@ -772,7 +770,7 @@ describe(Support.getTestDialectTeaser('Hooks'), () => {
                 return Promise.resolve();
               });
 
-              return Sequelize.Promise.all([
+              return Promise.all([
                 this.Projects.create({ title: 'New Project' }),
                 this.MiniTasks.create({ mini_title: 'New MiniTask' })
               ]).then(([project, minitask]) => {
@@ -858,15 +856,16 @@ describe(Support.getTestDialectTeaser('Hooks'), () => {
                 return Promise.resolve();
               });
 
-              return Sequelize.Promise.all([
+              return Promise.all([
                 this.Projects.create({ title: 'New Project' }),
                 this.Tasks.create({ title: 'New Task' }),
                 this.MiniTasks.create({ mini_title: 'New MiniTask' })
-              ]).then(([project, task, minitask]) => {
-                return Sequelize.Promise.all([
+              ]).then(async([project, task, minitask]) => {
+                await Promise.all([
                   task.addMiniTask(minitask),
                   project.addTask(task)
-                ]).return(project);
+                ]);
+                return project;
               }).then(project => {
                 return project.destroy();
               }).then(() => {
@@ -913,15 +912,16 @@ describe(Support.getTestDialectTeaser('Hooks'), () => {
                 afterMiniTask = true;
               });
 
-              return Sequelize.Promise.all([
+              return Promise.all([
                 this.Projects.create({ title: 'New Project' }),
                 this.Tasks.create({ title: 'New Task' }),
                 this.MiniTasks.create({ mini_title: 'New MiniTask' })
-              ]).then(([project, task, minitask]) => {
-                return Sequelize.Promise.all([
+              ]).then(async([project, task, minitask]) => {
+                await Promise.all([
                   task.addMiniTask(minitask),
                   project.addTask(task)
-                ]).return(project);
+                ]);
+                return project;
               }).then(project => {
                 return expect(project.destroy()).to.eventually.be.rejectedWith(CustomErrorText).then(() => {
                   expect(beforeProject).to.be.true;

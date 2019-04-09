@@ -9,7 +9,6 @@ const chai = require('chai'),
   sinon = require('sinon'),
   _ = require('lodash'),
   moment = require('moment'),
-  Promise = require('bluebird'),
   current = Support.sequelize,
   Op = Sequelize.Op,
   semver = require('semver');
@@ -314,10 +313,11 @@ describe(Support.getTestDialectTeaser('Model'), () => {
       });
 
       return User.sync({ force: true }).then(() => {
-        return Sequelize.Promise.all([
+        return Promise.all([
           User.create({ username: 'tobi', email: 'tobi@tobi.me' }),
           User.create({ username: 'tobi', email: 'tobi@tobi.me' })]);
-      }).catch(Sequelize.UniqueConstraintError, err => {
+      }).catch(err => {
+        expect(err).to.be.instanceof(Sequelize.UniqueConstraintError);
         expect(err.message).to.equal('User and email must be unique');
       });
     });
@@ -346,10 +346,11 @@ describe(Support.getTestDialectTeaser('Model'), () => {
           user_id: { type: Sequelize.INTEGER, unique: { name: 'user_and_email_index', msg: 'User and email must be unique' } },
           email: { type: Sequelize.STRING, unique: 'user_and_email_index' }
         });
-        return Sequelize.Promise.all([
+        return Promise.all([
           User.create({ user_id: 1, email: 'tobi@tobi.me' }),
           User.create({ user_id: 1, email: 'tobi@tobi.me' })]);
-      }).catch(Sequelize.UniqueConstraintError, err => {
+      }).catch(err => {
+        expect(err).to.be.instanceof(Sequelize.UniqueConstraintError);
         expect(err.message).to.equal('User and email must be unique');
       });
     });
@@ -815,7 +816,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
 
   describe('save', () => {
     it('should mapping the correct fields when saving instance. see #10589', function() {
-      const User = this.sequelize.define('User', { 
+      const User = this.sequelize.define('User', {
         id3: {
           field: 'id',
           type: Sequelize.INTEGER,
@@ -862,7 +863,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
     });
 
     it('should mapping the correct fields when updating instance. see #10589', function() {
-      const User = this.sequelize.define('User', { 
+      const User = this.sequelize.define('User', {
         id3: {
           field: 'id',
           type: Sequelize.INTEGER,
@@ -1993,14 +1994,13 @@ describe(Support.getTestDialectTeaser('Model'), () => {
         .then(() => PostComment.sync({ force: true }))
         .then(() => Post.create({}))
         .then(post => PostComment.bulkCreate([{ PostId: post.id }, { PostId: post.id }]))
-        .then(() => Promise.join(
+        .then(() => Promise.all([
           Post.count({ distinct: false, include: [{ model: PostComment, required: false }] }),
-          Post.count({ distinct: true, include: [{ model: PostComment, required: false }] }),
-          (count1, count2) => {
-            expect(count1).to.equal(2);
-            expect(count2).to.equal(1);
-          })
-        );
+          Post.count({ distinct: true, include: [{ model: PostComment, required: false }] })
+        ]).then((count1, count2) => {
+          expect(count1).to.equal(2);
+          expect(count2).to.equal(1);
+        }));
     });
 
   });
@@ -2209,11 +2209,11 @@ describe(Support.getTestDialectTeaser('Model'), () => {
         }
       });
 
-      return Promise.join(
+      return Promise.all([
         this.UserWithAge.sync({ force: true }),
         this.UserWithDec.sync({ force: true }),
         this.UserWithFields.sync({ force: true })
-      );
+      ]);
     });
 
     it('should return the sum of the values for a field named the same as an SQL reserved keyword', function() {
@@ -2832,17 +2832,13 @@ describe(Support.getTestDialectTeaser('Model'), () => {
             return t.rollback();
           });
         };
-        return User.sync({ force: true }).then(() => {
-          const tasks = [];
-          for (let i = 0; i < 1000; i++) {
-            tasks.push(testAsync);
-          }
-          return Sequelize.Promise.resolve(tasks).map(entry => {
-            return entry();
-          }, {
-            // Needs to be one less than ??? else the non transaction query won't ever get a connection
-            concurrency: (sequelize.config.pool && sequelize.config.pool.max || 5) - 1
-          });
+        return User.sync({ force: true }).then(async() => {
+          const tasks = new Array(1000).fill(testAsync);
+          /*
+           * // Needs to be one less than ??? else the non transaction query won't ever get a connection
+           * concurrency: (sequelize.config.pool && sequelize.config.pool.max || 5) - 1
+           */
+          await Promise.all(tasks.map(entry => entry()));
         });
       });
     });
@@ -2928,7 +2924,7 @@ describe(Support.getTestDialectTeaser('Model'), () => {
         expect(user.bulkCreate(data, {
           validate: true,
           individualHooks: true
-        })).to.be.rejectedWith(Promise.AggregateError);
+        })).to.be.rejectedWith(Sequelize.AggregateError);
       });
     });
 

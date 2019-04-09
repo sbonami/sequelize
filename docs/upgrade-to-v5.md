@@ -110,7 +110,7 @@ Prototype references for many constants, objects and classes has been removed [#
 | Removed in v5 | Official Alternative |
 | :------ | :------ |
 | Sequelize.prototype.Utils | Sequelize.Utils |
-| Sequelize.prototype.Promise | Sequelize.Promise |
+| Sequelize.prototype.Promise | Promise |
 | Sequelize.prototype.TableHints | Sequelize.TableHints |
 | Sequelize.prototype.Op | Sequelize.Op |
 | Sequelize.prototype.Transaction | Sequelize.Transaction |

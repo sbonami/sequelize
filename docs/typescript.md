@@ -10,7 +10,6 @@ In order to avoid installation bloat for non TS users, you must install the foll
 
 - `@types/node` (this is universally required)
 - `@types/validator`
-- `@types/bluebird`
 
 ## Usage
 
@@ -105,7 +104,6 @@ User.hasMany(Project, {
 });
 
 async function stuff() {
-  // Please note that when using async/await you lose the `bluebird` promise context
   // and you fall back to native
   const newUser = await User.create({
     name: 'Johnny',
